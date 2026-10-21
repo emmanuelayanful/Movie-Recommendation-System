@@ -26,18 +26,18 @@ The system is designed to handle MovieLens datasets (e.g., `ml-latest-small`, `m
 
 ```text
 .
-├── deploy/             # Deployment artifacts (Flask app)
-│   ├── app.py          # Streamlit application entry point
-├── data/               # Data storage (Raw downloads and preprocessed pickles)
-├── experiments/        # Experiment artifacts (Plots, logs, saved models, data splits)
-
-├── src/                # Core source code
-│   ├── main.py         # Main entry point class `RecommendationModel`
-│   ├── models.py       # Mathematical implementations of optimization algorithms
-│   └── utils.py        # Utilities for loading data, plotting, and splitting
-├── example.ipynb       # Jupyter notebook demonstrating the full recommendation flow
-├── environment.yaml    # Conda environment dependency file
-└── README.md           # Project documentation
+├── deploy/               # Deployment artifacts (Flask app)
+│   ├── app.py            # Streamlit application entry point
+├── data/                 # Data storage (Raw downloads and preprocessed pickles)
+├── experiments/          # Experiment artifacts (Plots, logs, saved models, data splits)
+├── src/                  # Core source code
+│   ├── main.py           # Main entry point class `RecommendationModel`
+│   ├── models.py         # Mathematical implementations of optimization algorithms
+│   └── utils.py          # Utilities for loading data, plotting, and splitting
+├── environment.yaml      # Conda environment dependency file
+├── example.ipynb         # Jupyter notebook demonstrating the full recommendation flow
+├── hyperparameters.ipynb # Conda environment dependency file
+└── README.md             # Project documentation
 ```
 
 ## Installation
@@ -80,12 +80,12 @@ The data is split into training and testing sets to evaluate generalization. A c
 
 ### 2. Bias-Only Model
 Minimizes the error by finding the optimal User Bias ($b_u$) and Movie Bias ($b_i$):
-$$ \hat{r}_{ui} = \mu + b_u + b_i $$
+\[ \hat{r}_{ui} = \mu + b_u + b_i \]
 Solved via alternating least squares (ALS) updates.
 
 ### 3. Matrix Factorization (Embeddings)
 Adds latent factors ($p_u$ for users, $q_i$ for items) to capture "hidden" features (e.g., genre preferences):
-$$ \hat{r}_{ui} = \mu + b_u + b_i + p_u \cdot q_i^T $$
+\[ \hat{r}_{ui} = \mu + b_u + b_i + p_u \cdot q_i^T \]
 Includes regularization terms ($\lambda$, $\gamma$, $\tau$) to prevent overfitting.
 
 ## Results & Visualization
