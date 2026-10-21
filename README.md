@@ -44,8 +44,8 @@ The system is designed to handle MovieLens datasets (e.g., `ml-latest-small`, `m
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
-   cd <repository-directory>
+   git clone https://github.com/emmanuelayanful/Movie-Recommendation-System.git
+   cd Movie-Recommendation-System
    ```
 
 2. **Set up the Conda Environment**:
@@ -72,6 +72,8 @@ The **`app.py`** file provides a web interface for users to interact with the re
 2. Provide ratings for the selected movies.
 3. Choose between the Bias-Only and Bias + Factors models.
 4. View personalized recommendations based on the selected movies and ratings.
+
+You can interact with the web interface here (https://emmanuelayanful-movie-recommendation-project-app-kv1nci.streamlit.app/)
 
 ## Methodology
 
