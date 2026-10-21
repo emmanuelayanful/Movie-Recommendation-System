@@ -80,16 +80,20 @@ The data is split into training and testing sets to evaluate generalization. A c
 
 ### 2. Bias-Only Model
 Minimizes the error by finding the optimal User Bias ($b_u$) and Movie Bias ($b_i$):
+
 $$
 \hat{r}_{ui} = \mu + b_u + b_i 
 $$
+
 Solved via alternating least squares (ALS) updates.
 
 ### 3. Matrix Factorization (Embeddings)
 Adds latent factors ($p_u$ for users, $q_i$ for items) to capture "hidden" features (e.g., genre preferences):
+
 $$
 \hat{r}_{ui} = \mu + b_u + b_i + p_u \cdot q_i^T 
 $$
+
 Includes regularization terms ($\lambda$, $\gamma$, $\tau$) to prevent overfitting.
 
 ## Results & Visualization
