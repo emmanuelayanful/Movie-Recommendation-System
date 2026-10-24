@@ -1,0 +1,29 @@
+2025-12-03 08:22:34,799 - INFO - ===== Starting Optuna bias-only parameter tuning =====
+2025-12-03 08:22:34,801 - INFO - Starting Optuna study: bias_only_param_tuning
+2025-12-03 08:22:34,805 - INFO - A new study created in memory with name: bias_only_param_tuning
+2025-12-03 08:22:34,806 - INFO - Running optimization for 20 trials...
+2025-12-03 08:24:08,937 - INFO - Trial 0 finished with value: 0.8555777070893967 and parameters: {'LAMBDA': 0.004221581209787514, 'GAMMA': 0.00014608881807360376}. Best is trial 0 with value: 0.8555777070893967.
+2025-12-03 08:25:33,661 - INFO - Trial 1 finished with value: 0.8555346581379792 and parameters: {'LAMBDA': 0.016999079453609605, 'GAMMA': 0.0012599669460706606}. Best is trial 1 with value: 0.8555346581379792.
+2025-12-03 08:26:58,541 - INFO - Trial 2 finished with value: 0.9050874065836764 and parameters: {'LAMBDA': 0.00017797963297369582, 'GAMMA': 0.004782525694832733}. Best is trial 1 with value: 0.8555346581379792.
+2025-12-03 08:28:24,096 - INFO - Trial 3 finished with value: 0.867578265224494 and parameters: {'LAMBDA': 0.000828545285420527, 'GAMMA': 0.00472940249120343}. Best is trial 1 with value: 0.8555346581379792.
+2025-12-03 08:29:49,813 - INFO - Trial 4 finished with value: 0.8554160003443747 and parameters: {'LAMBDA': 0.0008750483775027124, 'GAMMA': 0.00023787355876347285}. Best is trial 4 with value: 0.8554160003443747.
+2025-12-03 08:31:18,666 - INFO - Trial 5 finished with value: 0.8554160799681514 and parameters: {'LAMBDA': 0.00032888688653812917, 'GAMMA': 0.00014717873982896172}. Best is trial 4 with value: 0.8554160003443747.
+2025-12-03 08:32:49,214 - INFO - Trial 6 finished with value: 0.8558619668551417 and parameters: {'LAMBDA': 0.004178391787070286, 'GAMMA': 0.00421347952761412}. Best is trial 4 with value: 0.8554160003443747.
+2025-12-03 08:34:14,655 - INFO - Trial 7 finished with value: 0.8554949156521541 and parameters: {'LAMBDA': 0.02645532418036562, 'GAMMA': 0.0031318107520432272}. Best is trial 4 with value: 0.8554160003443747.
+2025-12-03 08:35:40,213 - INFO - Trial 8 finished with value: 0.8554952519282445 and parameters: {'LAMBDA': 0.0003650640308626572, 'GAMMA': 0.00022936766449498455}. Best is trial 4 with value: 0.8554160003443747.
+2025-12-03 08:37:09,680 - INFO - Trial 9 finished with value: 0.85548783860056 and parameters: {'LAMBDA': 0.01317146459231272, 'GAMMA': 0.0016780979401107973}. Best is trial 4 with value: 0.8554160003443747.
+2025-12-03 08:38:45,020 - INFO - Trial 10 finished with value: 0.8556153873766408 and parameters: {'LAMBDA': 0.09336749034660616, 'GAMMA': 0.0004456579852765706}. Best is trial 4 with value: 0.8554160003443747.
+2025-12-03 08:40:15,647 - INFO - Trial 11 finished with value: 0.8554058409460236 and parameters: {'LAMBDA': 0.0010387731760098527, 'GAMMA': 0.0003894917675824631}. Best is trial 11 with value: 0.8554058409460236.
+2025-12-03 08:41:43,240 - INFO - Trial 12 finished with value: 0.8554057472432053 and parameters: {'LAMBDA': 0.0011785839213822157, 'GAMMA': 0.00043940548449132306}. Best is trial 12 with value: 0.8554057472432053.
+2025-12-03 08:43:11,795 - INFO - Trial 13 finished with value: 0.8554208469015766 and parameters: {'LAMBDA': 0.0021888461080335343, 'GAMMA': 0.0005569924758522912}. Best is trial 12 with value: 0.8554057472432053.
+2025-12-03 08:44:42,398 - INFO - Trial 14 finished with value: 0.8554353125901658 and parameters: {'LAMBDA': 0.0012868139114555106, 'GAMMA': 0.0006564890394373393}. Best is trial 12 with value: 0.8554057472432053.
+2025-12-03 08:46:19,284 - INFO - Trial 15 finished with value: 0.8591943999399255 and parameters: {'LAMBDA': 0.00012730604116558466, 'GAMMA': 0.0003367586479905379}. Best is trial 12 with value: 0.8554057472432053.
+2025-12-03 08:47:48,888 - INFO - Trial 16 finished with value: 0.8572466354988326 and parameters: {'LAMBDA': 0.000499256562892592, 'GAMMA': 0.0009050813916029797}. Best is trial 12 with value: 0.8554057472432053.
+2025-12-03 08:49:13,988 - INFO - Trial 17 finished with value: 0.8554852473246176 and parameters: {'LAMBDA': 0.002389075017971371, 'GAMMA': 0.0003125354172880251}. Best is trial 12 with value: 0.8554057472432053.
+2025-12-03 08:50:39,196 - INFO - Trial 18 finished with value: 0.8558881584458263 and parameters: {'LAMBDA': 0.008092575874968706, 'GAMMA': 0.008326489491138718}. Best is trial 12 with value: 0.8554057472432053.
+2025-12-03 08:52:05,353 - INFO - Trial 19 finished with value: 0.8560277797736684 and parameters: {'LAMBDA': 0.0014973959469867155, 'GAMMA': 0.0016944015905087516}. Best is trial 12 with value: 0.8554057472432053.
+2025-12-03 08:52:05,356 - INFO - Best trial parameters: {'LAMBDA': 0.0011785839213822157, 'GAMMA': 0.00043940548449132306}
+2025-12-03 08:52:05,357 - INFO - Best trial test RMSE: 0.8554057472
+2025-12-03 08:52:05,365 - INFO - Saved Optuna study to: experiments/ml-32m/model_files/params_bias.pkl
+2025-12-03 08:52:05,367 - INFO - Optuna tuning finished.
+2025-12-03 08:52:05,368 - INFO - ===== Optuna tuning finished successfully =====

@@ -1,0 +1,7 @@
+data/ml-32m/preprocess/ratings.pkl filter=lfs diff=lfs merge=lfs -text
+experiments/ml-32m/data_split/movies_test.npy filter=lfs diff=lfs merge=lfs -text
+experiments/ml-32m/data_split/movies_train.npy filter=lfs diff=lfs merge=lfs -text
+experiments/ml-32m/data_split/users_train.npy filter=lfs diff=lfs merge=lfs -text
+experiments/ml-32m/data_split/users_test.npy filter=lfs diff=lfs merge=lfs -text
+data/ml-32m/raw/ml-32m.zip filter=lfs diff=lfs merge=lfs -text
+data/ml-32m/raw/ratings.csv filter=lfs diff=lfs merge=lfs -text
