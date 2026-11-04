@@ -1,363 +1,728 @@
-#!/usr/bin/env python 
-import os
+#!/usr/bin/env python3
+
+"""
+Alternating least-squares update and evaluation for MovieLens models.
+
+This module implements two explicit-feedback collaborative filtering models:
+
+1. **Bias-only**: ``prediction(u, i) = user_bias[u] + movie_bias[i]``.
+2. **Bias plus factors**: ``prediction(u, i) = user_bias[u] + movie_bias[i]
+   + user_factors[u] @ movie_factors[i]``.
+
+Both models minimize a regularized *sum of squared errors* on the observed
+training ratings. ``lambda_reg`` weights data fit, ``gamma`` penalizes user/item
+biases, and ``tau`` penalizes latent factors; see the loss functions below.
+
+Data format
+-----------
+The training and evaluation functions accept the grouped arrays produced by
+``utils.split_into_train_test``:
+
+* ``users``: row ``j`` contains ``(movie_indices, ratings)`` for the user
+  identified by ``users_indices[j]``.
+* ``movies``: row ``j`` contains ``(user_indices, ratings)`` for the movie
+  identified by ``movies_indices[j]``.
+
+Each index array is one-dimensional and integer-valued; each corresponding
+rating array is one-dimensional and floating-point. The outer grouped arrays
+may have object dtype, but each inner array passed to a Numba-compiled update
+must have a numeric dtype.
+"""
+
+from __future__ import annotations
+
 import numpy as np
-from numba import jit, njit
+from numba import njit
 
+############################ BIAS ONLY MODEL #############################
 
-##############################################################################
-############################## BIAS ONLY MODEL ###############################
-##############################################################################
-
-@jit(nopython=True)
-def update_user_bias(movie_biases, movie_indices, ratings, LAMBDA, GAMMA):
+@njit
+def update_user_bias(
+    movie_biases: np.ndarray,
+    movie_indices: np.ndarray,
+    ratings: np.ndarray,
+    lambda_reg: float,
+    gamma: float,
+) -> float:
     """
-    Update user bias using the biased collaborative filtering model.
+    Compute the regularized closed-form bias update for one user.
 
-    Args:
-        movie_biases (arr): Array containing the current movie biases.
-        movie_indices (arr): Array containing the indices of the movies rated by the user.
-        ratings (arr): Array containing the ratings given by the user to the movies.
-        LAMBDA (float): Regularization parameter for the bias update.
-        GAMMA (float): Regularization parameter for the bias update.
+    Parameters
+    ----------
+    movie_biases : numpy.ndarray, shape (n_movies,)
+        Current item bias estimates.
+    movie_indices : numpy.ndarray, shape (n_ratings,)
+        Internal movie indices rated by this user.
+    ratings : numpy.ndarray, shape (n_ratings,)
+        Corresponding observed ratings.
+    lambda_reg : float
+        Positive weight of the squared-error term.
+    gamma : float
+        Nonnegative L2 regularization coefficient for biases.
 
-    Returns:
-        float: New value of the user bias.
+    Returns
+    -------
+    float
+        Updated bias for the selected user.
     """
-    predictions = movie_biases[movie_indices]
-    residual = ratings - predictions
-    return LAMBDA * np.sum(residual) / (LAMBDA * len(movie_indices) + GAMMA)
+    residuals = ratings - movie_biases[movie_indices]
+    return lambda_reg * np.sum(residuals) / (lambda_reg * len(movie_indices) + gamma)
 
-@jit(nopython=True)
-def update_movie_bias(user_biases, user_indices, ratings, LAMBDA, GAMMA):
+@njit
+def update_movie_bias(
+    user_biases: np.ndarray,
+    user_indices: np.ndarray,
+    ratings: np.ndarray,
+    lambda_reg: float,
+    gamma: float,
+) -> float:
     """
-    Update movie bias using the biased collaborative filtering model.
+    Compute the regularized closed-form bias update for one movie.
 
-    Args:
-        user_biases (arr): Array containing the current user biases.
-        user_indices (arr): Array containing the indices of the users who rated the movie.
-        ratings (arr): Array containing the ratings given by the users to the movie.
-        LAMBDA (float): Regularization parameter for the bias update.
-        GAMMA (float): Regularization parameter for the bias update.
-    
-    Returns:
-        float: New value of the movie bias.
+    Parameters
+    ----------
+    user_biases : numpy.ndarray, shape (n_users,)
+        Current user bias estimates.
+    user_indices : numpy.ndarray, shape (n_ratings,)
+        Internal indices of users who rated the movie.
+    ratings : numpy.ndarray, shape (n_ratings,)
+        Corresponding observed ratings.
+    lambda_reg : float
+        Positive weight of the squared-error term.
+    gamma : float
+        Nonnegative L2 regularization coefficient for biases.
+
+    Returns
+    -------
+    float
+        Updated bias for the selected movie.
     """
-    predictions = user_biases[user_indices]
-    residual = ratings - predictions
-    return LAMBDA * np.sum(residual) / (LAMBDA * len(user_indices) + GAMMA)
+    residuals = ratings - user_biases[user_indices]
+    return lambda_reg * np.sum(residuals) / (lambda_reg * len(user_indices) + gamma)
 
+@njit
+def get_sq_error(
+    user: int,
+    user_biases: np.ndarray,
+    movie_biases: np.ndarray,
+    movie_indices: np.ndarray,
+    ratings: np.ndarray,
+) -> np.ndarray:
+    """
+    Return per-rating squared errors for one user (bias-only model).
+    """
+    predictions = user_biases[user] + movie_biases[movie_indices]
+    return np.square(ratings - predictions)
 
-@jit(nopython = True)
-def getSqError(user, user_biases, movie_biases, movie_indices, ratings):
-    prediction = user_biases[user] + movie_biases[movie_indices]
-    return np.square(ratings - prediction)
-
-@jit(nopython = True)
-def getSumSqError(sq_error):
+@njit
+def get_sum_sq_error(sq_error: np.ndarray) -> float:
+    """
+    Compute the sum of squared errors.
+    """
     return np.sum(sq_error)
 
-def update_biases(users_train, movies_train, users_indices_train, movies_indices_train,
-                  user_biases, movie_biases, LAMBDA, GAMMA):
+def update_biases(
+    users_train: np.ndarray,
+    movies_train: np.ndarray,
+    users_indices_train: np.ndarray,
+    movies_indices_train: np.ndarray,
+    user_biases: np.ndarray,
+    movie_biases: np.ndarray,
+    lambda_reg: float,
+    gamma: float,
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Update the biases for the biased collaborative filtering model.
+    Perform one alternating update sweep for the bias-only model.
 
-    Args:
-        users_train (arr): Array containing the training data for users.
-        movies_train (arr): Array containing the training data for movies.
-        users_indices_train (arr): Array containing the indices of the users in the training data.
-        movies_indices_train (arr): Array containing the indices of the movies in the training data.
-        user_biases (arr): Array containing the current user biases.
-        movie_biases (arr): Array containing the current movie biases.
-        LAMBDA (float): Regularization parameter for the bias update.
-        GAMMA (float): Regularization parameter for the bias update.
+    Parameters
+    ----------
+    users_train : numpy.ndarray
+        User-grouped training observations; see module-level data format.
+    movies_train : numpy.ndarray
+        Movie-grouped training observations.
+    users_indices_train : numpy.ndarray, shape (n_active_users,)
+        User IDs corresponding to the rows of ``users_train``.
+    movies_indices_train : numpy.ndarray, shape (n_active_movies,)
+        Movie IDs corresponding to the rows of ``movies_train``.
+    user_biases : numpy.ndarray, shape (n_users,)
+        User biases, updated in place.
+    movie_biases : numpy.ndarray, shape (n_movies,)
+        Movie biases, updated in place.
+    lambda_reg : float
+        Positive weight of the squared-error term.
+    gamma : float
+        Nonnegative L2 bias regularization coefficient.
 
-    Returns:
-        tuple: New values of the user biases and movie biases.
+    Returns
+    -------
+    tuple of numpy.ndarray
+        The same ``(user_biases, movie_biases)`` arrays, after one sweep.
     """
-    for idx, user_idx in enumerate(users_indices_train):
-        ratings = users_train[idx][1]
-        movie_indices = users_train[idx][0]
+    for row, user_idx in enumerate(users_indices_train):
+        movie_indices, ratings = users_train[row]
         user_biases[user_idx] = update_user_bias(
-            movie_biases, movie_indices, ratings, LAMBDA, GAMMA
-            )
-    for idx, movie_idx in enumerate(movies_indices_train):
-        ratings = movies_train[idx][1]
-        user_indices = movies_train[idx][0]
+            movie_biases, movie_indices, ratings, lambda_reg, gamma
+        )
+
+    for row, movie_idx in enumerate(movies_indices_train):
+        user_indices, ratings = movies_train[row]
         movie_biases[movie_idx] = update_movie_bias(
-            user_biases, user_indices, ratings, LAMBDA, GAMMA
-            )
+            user_biases, user_indices, ratings, lambda_reg, gamma
+        )
+
     return user_biases, movie_biases
-    
- 
-def compute_loss(users_train, users_indices_train, user_biases, movie_biases, LAMBDA, GAMMA):
+
+def compute_loss(
+    users_train: np.ndarray,
+    users_indices_train: np.ndarray,
+    user_biases: np.ndarray,
+    movie_biases: np.ndarray,
+    lambda_reg: float,
+    gamma: float,
+) -> float:
     """
-    Compute the loss of the biased collaborative filtering model.
+    Calculate the bias-only training objective (including L2 penalties).
 
-    Args:
-        users_train (arr): Array containing the training data for users.
-        users_indices_train (arr): Array containing the indices of the users in the training data.
-        user_biases (arr): Array containing the current user biases.
-        movie_biases (arr): Array containing the current movie biases.
-        LAMBDA (float): Regularization parameter for the bias update.
-        GAMMA (float): Regularization parameter for the bias update.
+    Parameters
+    ----------
+    users_train : numpy.ndarray
+        User-grouped training observations.
+    users_indices_train : numpy.ndarray
+        User IDs corresponding to ``users_train``.
+    user_biases : numpy.ndarray
+        Current user biases.
+    movie_biases : numpy.ndarray
+        Current movie biases.
+    lambda_reg : float
+        Positive squared-error weight.
+    gamma : float
+        Nonnegative bias regularization coefficient.
 
-    Returns:
-        float: Loss value of the biased collaborative filtering model.
+    Returns
+    -------
+    float
+        Value of the regularized objective on the training observations.
     """
-    loss = 0.0
-    for idx, user_idx in enumerate(users_indices_train):
-        movie_indices = users_train[idx][0]
-        ratings = users_train[idx][1]
-        sq_error = getSqError(user_idx, user_biases, movie_biases, movie_indices, ratings)
-        sum_sq_errors = getSumSqError(sq_error)
-        bias_terms =  np.sum(np.square(user_biases)) + np.sum(np.square(movie_biases))
-        loss += 0.5 * LAMBDA * sum_sq_errors  + 0.5 * GAMMA * bias_terms
-    return loss
+    squared_error_sum = 0.0
+    for row, user_idx in enumerate(users_indices_train):
+        movie_indices, ratings = users_train[row]
+        squared_errors = get_sq_error(
+            user_idx, user_biases, movie_biases, movie_indices, ratings
+        )
+        squared_error_sum += get_sum_sq_error(squared_errors)
 
+    bias_penalty = (
+        np.sum(np.square(user_biases)) + np.sum(np.square(movie_biases))
+    )
+    return float(
+        0.5 * lambda_reg * squared_error_sum + 0.5 * gamma * bias_penalty
+    )
 
-def compute_rmse(users_indices, users, user_biases, movie_biases):
+def compute_rmse(
+    users_indices: np.ndarray,
+    users: np.ndarray,
+    user_biases: np.ndarray,
+    movie_biases: np.ndarray,
+) -> float:
     """
-    Compute the root mean squared error of the biased collaborative filtering model.
+    Compute bias-only RMSE over the supplied observed ratings.
 
-    Args:
-        users_indices (arr): Array containing the indices of the users.
-        users (arr): Array containing the ratings data for users.
-        user_biases (arr): Array containing the current user biases.
-        movie_biases (arr): Array containing the current movie biases.
+    Parameters
+    ----------
+    users_indices : numpy.ndarray
+        User IDs corresponding to the grouped observations.
+    users : numpy.ndarray
+        User-grouped observations, either training or test.
+    user_biases : numpy.ndarray
+        Current user biases.
+    movie_biases : numpy.ndarray
+        Current movie biases.
 
-    Returns:
-        float: Root mean squared error value of the biased collaborative filtering model.
+    Returns
+    -------
+    float
+        Root mean squared prediction error over individual ratings.
+
+    Raises
+    ------
+    ValueError
+        If there are no observations to evaluate.
     """
-    rmse = []
-    for idx, user_idx in enumerate(users_indices):
-        movie_indices = users[idx][0]
-        ratings = users[idx][1]
-        sq_error = getSqError(user_idx, user_biases, movie_biases, movie_indices, ratings)
-        rmse.extend(sq_error)
-    return np.sqrt(np.mean(rmse))
+    total_squared_error = 0.0
+    n_ratings = 0
 
+    for row, user_idx in enumerate(users_indices):
+        movie_indices, ratings = users[row]
+        squared_errors = get_sq_error(
+            user_idx, user_biases, movie_biases, movie_indices, ratings
+        )
+        total_squared_error += get_sum_sq_error(squared_errors)
+        n_ratings += len(ratings)
 
-##############################################################################
-######################## BIAS & EMBEDDINGS ONLY MODEL ########################
-##############################################################################
+    if n_ratings == 0:
+        raise ValueError("RMSE cannot be computed for an empty ratings set.")
 
-@jit(nopython=True)
-def update_user_bias_with_embeddings(user_idx, user_embeddings, movie_embeddings, 
-                                     movie_biases, movie_indices, ratings, LAMBDA, GAMMA):
+    return float(np.sqrt(total_squared_error / n_ratings))
+
+######################## BIAS & LATENT-FACTOR MODEL ########################
+
+@njit
+def update_user_bias_with_embeddings(
+    user_idx: int,
+    user_embeddings: np.ndarray,
+    movie_embeddings: np.ndarray,
+    movie_biases: np.ndarray,
+    movie_indices: np.ndarray,
+    ratings: np.ndarray,
+    lambda_reg: float,
+    gamma: float,
+) -> float:
     """
-    Update user bias using the collaborative filtering model with embeddings
+    Update one user bias with user and movie factors held fixed.
 
-    Args:
-        user_idx (int): The index of the user
-        user_embeddings (arr): Array containing the embeddings for the users.
-        movie_embeddings (arr): Array containing the embeddings for the movies.
-        movie_biases (arr): Array containing the current movie biases.
-        movie_indices (arr): Array containing the indices of the movies rated by the user.
-        ratings (arr): Array containing the ratings given by the user to the movies.
-        LAMBDA (float): Regularization parameter for the bias update.
-        GAMMA (float): Regularization parameter for the bias update.
+    Parameters
+    ----------
+    user_idx : int
+        Internal ID of the user being updated.
+    user_embeddings : numpy.ndarray, shape (n_users, n_factors)
+        Current user latent-factor matrix.
+    movie_embeddings : numpy.ndarray, shape (n_movies, n_factors)
+        Current movie latent-factor matrix.
+    movie_biases : numpy.ndarray, shape (n_movies,)
+        Current movie biases.
+    movie_indices : numpy.ndarray, shape (n_ratings,)
+        Movie IDs rated by this user.
+    ratings : numpy.ndarray, shape (n_ratings,)
+        Corresponding observed ratings.
+    lambda_reg : float
+        Positive squared-error weight.
+    gamma : float
+        Nonnegative bias regularization coefficient.
 
-    Returns:
-        float: New value of the user bias.
+    Returns
+    -------
+    float
+        Updated user bias.
     """
-    predictions = user_embeddings[user_idx] @ movie_embeddings[movie_indices].T + movie_biases[movie_indices]
-    residual = ratings - predictions
-    return LAMBDA * np.sum(residual) / (LAMBDA * len(movie_indices) + GAMMA)
+    factor_predictions = (
+        user_embeddings[user_idx] @ movie_embeddings[movie_indices].T
+    )
+    residuals = ratings - factor_predictions - movie_biases[movie_indices]
+    return lambda_reg * np.sum(residuals) / (lambda_reg * len(movie_indices) + gamma)
 
-
-@jit(nopython=True)
-def update_user_embedding(user_idx, movie_embeddings, user_biases,
-                          movie_biases, movie_indices, ratings, LAMBDA, TAU):
+@njit
+def update_user_embedding(
+    user_idx: int,
+    movie_embeddings: np.ndarray,
+    user_biases: np.ndarray,
+    movie_biases: np.ndarray,
+    movie_indices: np.ndarray,
+    ratings: np.ndarray,
+    lambda_reg: float,
+    tau: float,
+) -> np.ndarray:
     """
-    Update user embedding using the collaborative filtering model with embeddings.
+    Solve the regularized least-squares problem for one user factor.
 
-    Args:
-        user_idx (int): The index of the user
-        movie_embeddings (arr): Array containing the embeddings for the movies.
-        user_biases (arr): Array containing the current user biases.
-        movie_biases (arr): Array containing the current movie biases.
-        movie_indices (arr): Array containing the indices of the movies rated by the user.
-        ratings (arr): Array containing the ratings given by the user to the movies.
-        LAMBDA (float): Regularization parameter for the bias update.
-        TAU (_type_): _description_
+    Parameters
+    ----------
+    user_idx : int
+        User whose factor is being updated.
+    movie_embeddings : numpy.ndarray, shape (n_movies, n_factors)
+        Fixed movie latent-factor matrix.
+    user_biases : numpy.ndarray, shape (n_users,)
+        Current user biases.
+    movie_biases : numpy.ndarray, shape (n_movies,)
+        Current movie biases.
+    movie_indices : numpy.ndarray, shape (n_ratings,)
+        IDs of movies rated by the user.
+    ratings : numpy.ndarray, shape (n_ratings,)
+        Corresponding observed ratings.
+    lambda_reg : float
+        Positive squared-error weight.
+    tau : float
+        Positive L2 coefficient for user/movie latent factors.
 
-    Returns:
-        (arr): Array containing the current updated user embeddings
+    Returns
+    -------
+    numpy.ndarray, shape (n_factors,)
+        Updated user factor vector.
     """
-    predictions = user_biases[user_idx] + movie_biases[movie_indices]
-    residual = ratings - predictions
-    other_term = LAMBDA * movie_embeddings[movie_indices].T @ residual
-    inverse_term = LAMBDA * movie_embeddings[movie_indices].T @ movie_embeddings[movie_indices] \
-        + TAU * np.eye(movie_embeddings.shape[1])
-    return np.linalg.solve(inverse_term, other_term)
-    
+    rated_movie_factors = movie_embeddings[movie_indices]
+    residuals = ratings - user_biases[user_idx] - movie_biases[movie_indices]
 
-@jit(nopython=True)
-def update_movie_bias_with_embeddings(movie_idx, user_embeddings, movie_embeddings, user_biases, user_indices, ratings, LAMBDA, GAMMA):
+    gram_matrix = rated_movie_factors.T @ rated_movie_factors
+    normal_matrix = lambda_reg * gram_matrix + tau * np.eye(
+        movie_embeddings.shape[1]
+    )
+    right_hand_side = lambda_reg * (rated_movie_factors.T @ residuals)
+    return np.linalg.solve(normal_matrix, right_hand_side)
+
+@njit
+def update_movie_bias_with_embeddings(
+    movie_idx: int,
+    user_embeddings: np.ndarray,
+    movie_embeddings: np.ndarray,
+    user_biases: np.ndarray,
+    user_indices: np.ndarray,
+    ratings: np.ndarray,
+    lambda_reg: float,
+    gamma: float,
+) -> float:
     """
-    Update movie bias using the biased collaborative filtering model with embeddings.
+    Update one movie bias with the latent factors held fixed.
 
-    Args:
-        movie_idx (int): The index of the movie
-        movie_embeddings (arr): Array containing the embeddings for the movies.
-        user_biases (arr): Array containing the current user biases.
-        user_indices (arr): Array containing the indices of the users who rated the movie.
-        ratings (arr): Array containing the ratings given by the users to the movie.
-        LAMBDA (float): Regularization parameter for the bias update.
-        GAMMA (float): Regularization parameter for the bias update.
-    
-    Returns:
-        float: New value of the movie bias.
+    Parameters
+    ----------
+    movie_idx : int
+        Internal ID of the movie being updated.
+    user_embeddings : numpy.ndarray, shape (n_users, n_factors)
+        Current user factor matrix.
+    movie_embeddings : numpy.ndarray, shape (n_movies, n_factors)
+        Current movie factor matrix.
+    user_biases : numpy.ndarray, shape (n_users,)
+        Current user biases.
+    user_indices : numpy.ndarray, shape (n_ratings,)
+        IDs of users who rated this movie.
+    ratings : numpy.ndarray, shape (n_ratings,)
+        Corresponding observed ratings.
+    lambda_reg : float
+        Positive squared-error weight.
+    gamma : float
+        Nonnegative bias regularization coefficient.
+
+    Returns
+    -------
+    float
+        Updated movie bias.
     """
-    predictions = user_embeddings[user_indices] @ movie_embeddings[movie_idx].T + user_biases[user_indices]
-    residual = ratings - predictions
-    return LAMBDA * np.sum(residual) / (LAMBDA * len(user_indices) + GAMMA)
+    factor_predictions = (
+        user_embeddings[user_indices] @ movie_embeddings[movie_idx]
+    )
+    residuals = ratings - factor_predictions - user_biases[user_indices]
+    return lambda_reg * np.sum(residuals) / (lambda_reg * len(user_indices) + gamma)
 
-@jit(nopython=True)
-def update_movie_embedding(movie_idx, user_embeddings, user_biases,
-                          movie_biases, user_indices, ratings, LAMBDA, TAU):
+@njit
+def update_movie_embedding(
+    movie_idx: int,
+    user_embeddings: np.ndarray,
+    user_biases: np.ndarray,
+    movie_biases: np.ndarray,
+    user_indices: np.ndarray,
+    ratings: np.ndarray,
+    lambda_reg: float,
+    tau: float,
+) -> np.ndarray:
     """
-    Update movie embedding using the biased collaborative filtering model with embedding.
+    Solve the regularized least-squares problem for one movie factor.
 
-    Args:
-        movie_idx (int): The index of the movie
-        user_embeddings (arr): Array containing the embeddings for the users.
-        user_biases (arr): Array containing the current user biases.
-        movie_biases (arr): Array containing the current movie biases.
-        user_indices (arr): Array containing the indices of the users who rated the movie.
-        ratings (arr): Array containing the ratings given by the users to the movie.
-        LAMBDA (float): Regularization parameter for the bias update.
-        TAU (_type_): _description_
+    Parameters
+    ----------
+    movie_idx : int
+        Movie whose factor is being updated.
+    user_embeddings : numpy.ndarray, shape (n_users, n_factors)
+        Fixed user latent-factor matrix.
+    user_biases : numpy.ndarray, shape (n_users,)
+        Current user biases.
+    movie_biases : numpy.ndarray, shape (n_movies,)
+        Current movie biases.
+    user_indices : numpy.ndarray, shape (n_ratings,)
+        IDs of users who rated this movie.
+    ratings : numpy.ndarray, shape (n_ratings,)
+        Corresponding observed ratings.
+    lambda_reg : float
+        Positive squared-error weight.
+    tau : float
+        Positive L2 coefficient for user/movie latent factors.
 
-    Returns:
-        (arr): Array containing the current updated movie embedding
+    Returns
+    -------
+    numpy.ndarray, shape (n_factors,)
+        Updated movie factor vector.
     """
-    predictions = movie_biases[movie_idx] + user_biases[user_indices]
-    residual = ratings - predictions
-    other_term = LAMBDA * user_embeddings[user_indices].T @ residual
-    inverse_term = LAMBDA * user_embeddings[user_indices].T @ user_embeddings[user_indices] \
-        + TAU * np.eye(user_embeddings.shape[1])
-    return np.linalg.solve(inverse_term, other_term)
+    rating_user_factors = user_embeddings[user_indices]
+    residuals = ratings - movie_biases[movie_idx] - user_biases[user_indices]
 
+    gram_matrix = rating_user_factors.T @ rating_user_factors
+    normal_matrix = lambda_reg * gram_matrix + tau * np.eye(
+        user_embeddings.shape[1]
+    )
+    right_hand_side = lambda_reg * (rating_user_factors.T @ residuals)
+    return np.linalg.solve(normal_matrix, right_hand_side)
 
-@jit(nopython = True)
-def getSqErrorEmbeddings(user_idx, user_biases, user_embeddings, movie_biases, movie_embeddings, movie_indices, ratings):
-    prediction = user_embeddings[user_idx] @ movie_embeddings[movie_indices].T + user_biases[user_idx] + movie_biases[movie_indices]
-    return np.square(ratings - prediction)
-
-@jit(nopython = True)
-def getSumSqError(sq_error):
-    return np.sum(sq_error)
-
-
-def update_user_biases_and_embeddings(users_train, users_indices_train,
-                  user_biases, user_embeddings, movie_embeddings, movie_biases, LAMBDA, GAMMA, TAU):
+@njit
+def get_sq_error_embeddings(
+    user_idx: int,
+    user_biases: np.ndarray,
+    user_embeddings: np.ndarray,
+    movie_biases: np.ndarray,
+    movie_embeddings: np.ndarray,
+    movie_indices: np.ndarray,
+    ratings: np.ndarray,
+) -> np.ndarray:
     """
-    Update the biases  and embeddingsfor the biased collaborative filtering model with embeddings.
-
-    Args:
-        users_train (arr): Array containing the training data for users.
-        users_indices_train (arr): Array containing the indices of the users in the training data.
-        user_biases (arr): Array containing the current user biases.
-        user_embeddings (arr): Array containing the embeddings for the users.
-        movie_embeddings (arr): Array containing the embeddings for the movies.
-        movie_biases (arr): Array containing the current movie biases.
-        LAMBDA (float): Regularization parameter for the bias update.
-        GAMMA (float): Regularization parameter for the bias update.
-
-    Returns:
-        tuple: New values of the user biases and user embeddings.
+    Return per-rating squared errors for one user (factor model).
     """
-    for idx, user_idx in enumerate(users_indices_train):
-        ratings = users_train[idx][1]
-        movie_indices = users_train[idx][0]
+    predictions = (
+        user_embeddings[user_idx] @ movie_embeddings[movie_indices].T
+        + user_biases[user_idx]
+        + movie_biases[movie_indices]
+    )
+    return np.square(ratings - predictions)
+
+def update_user_biases_and_embeddings(
+    users_train: np.ndarray,
+    users_indices_train: np.ndarray,
+    user_biases: np.ndarray,
+    user_embeddings: np.ndarray,
+    movie_embeddings: np.ndarray,
+    movie_biases: np.ndarray,
+    lambda_reg: float,
+    gamma: float,
+    tau: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Run one user-side alternating sweep for the factor model.
+
+    Parameters
+    ----------
+    users_train : numpy.ndarray
+        Grouped training observations for active users.
+    users_indices_train : numpy.ndarray
+        User IDs corresponding to rows of ``users_train``.
+    user_biases : numpy.ndarray
+        User biases, updated in place.
+    user_embeddings : numpy.ndarray
+        User factor matrix, updated in place.
+    movie_embeddings : numpy.ndarray
+        Current (fixed during this sweep) movie factor matrix.
+    movie_biases : numpy.ndarray
+        Current movie biases.
+    lambda_reg : float
+        Positive squared-error weight.
+    gamma : float
+        Nonnegative bias regularization coefficient.
+    tau : float
+        Positive latent-factor regularization coefficient.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        The updated ``(user_biases, user_embeddings)`` arrays.
+    """
+    for row, user_idx in enumerate(users_indices_train):
+        movie_indices, ratings = users_train[row]
         user_biases[user_idx] = update_user_bias_with_embeddings(
-            user_idx, user_embeddings, movie_embeddings, movie_biases, movie_indices, ratings, LAMBDA, GAMMA
-            )
+            user_idx,
+            user_embeddings,
+            movie_embeddings,
+            movie_biases,
+            movie_indices,
+            ratings,
+            lambda_reg,
+            gamma,
+        )
         user_embeddings[user_idx] = update_user_embedding(
-            user_idx, movie_embeddings, user_biases, movie_biases, movie_indices, ratings, LAMBDA, TAU
-            )
+            user_idx,
+            movie_embeddings,
+            user_biases,
+            movie_biases,
+            movie_indices,
+            ratings,
+            lambda_reg,
+            tau,
+        )
+
     return user_biases, user_embeddings
-    
 
-def update_movie_biases_and_embeddings(movies_train, movies_indices_train,
-                  user_biases, user_embeddings, movie_embeddings, movie_biases, LAMBDA, GAMMA, TAU):
+def update_movie_biases_and_embeddings(
+    movies_train: np.ndarray,
+    movies_indices_train: np.ndarray,
+    user_biases: np.ndarray,
+    user_embeddings: np.ndarray,
+    movie_embeddings: np.ndarray,
+    movie_biases: np.ndarray,
+    lambda_reg: float,
+    gamma: float,
+    tau: float,
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Update the biases for the biased collaborative filtering model with embeddings.
+    Run one movie-side alternating sweep for the factor model.
 
-    Args:
-        movies_train (arr): Array containing the training data for movies.
-        movie_indices_train (arr): Array containing the indices of the movies in the training data.
-        user_biases (arr): Array containing the current user biases.
-        user_embeddings (arr): Array containing the embeddings for the users.
-        movie_embeddings (arr): Array containing the embeddings for the movies.
-        movie_biases (arr): Array containing the current movie biases.
-        LAMBDA (float): Regularization parameter for the bias update.
-        GAMMA (float): Regularization parameter for the bias update.
-    Returns:
-        tiple: New values of the movie biases and movie embeddings
+    Parameters
+    ----------
+    movies_train : numpy.ndarray
+        Grouped training observations for active movies.
+    movies_indices_train : numpy.ndarray
+        Movie IDs corresponding to rows of ``movies_train``.
+    user_biases : numpy.ndarray
+        Current user biases.
+    user_embeddings : numpy.ndarray
+        Current user factor matrix.
+    movie_embeddings : numpy.ndarray
+        Movie factor matrix, updated in place.
+    movie_biases : numpy.ndarray
+        Movie biases, updated in place.
+    lambda_reg : float
+        Positive squared-error weight.
+    gamma : float
+        Nonnegative bias regularization coefficient.
+    tau : float
+        Positive latent-factor regularization coefficient.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        The updated ``(movie_biases, movie_embeddings)`` arrays.
     """
-    for idx, movie_idx in enumerate(movies_indices_train):
-        ratings = movies_train[idx][1]
-        user_indices = movies_train[idx][0]
+    for row, movie_idx in enumerate(movies_indices_train):
+        user_indices, ratings = movies_train[row]
         movie_biases[movie_idx] = update_movie_bias_with_embeddings(
-            movie_idx, user_embeddings, movie_embeddings, user_biases, user_indices, ratings, LAMBDA, GAMMA
+            movie_idx,
+            user_embeddings,
+            movie_embeddings,
+            user_biases,
+            user_indices,
+            ratings,
+            lambda_reg,
+            gamma,
         )
         movie_embeddings[movie_idx] = update_movie_embedding(
-            movie_idx, user_embeddings, user_biases, movie_biases, user_indices, ratings, LAMBDA, TAU
-            )
+            movie_idx,
+            user_embeddings,
+            user_biases,
+            movie_biases,
+            user_indices,
+            ratings,
+            lambda_reg,
+            tau,
+        )
+
     return movie_biases, movie_embeddings
-    
-def compute_loss_with_embeddings(users_train, users_indices_train, user_biases, user_embeddings, 
-                                 movie_biases, movie_embeddings, LAMBDA, GAMMA, TAU):
+
+def compute_loss_with_embeddings(
+    users_train: np.ndarray,
+    users_indices_train: np.ndarray,
+    user_biases: np.ndarray,
+    user_embeddings: np.ndarray,
+    movie_biases: np.ndarray,
+    movie_embeddings: np.ndarray,
+    lambda_reg: float,
+    gamma: float,
+    tau: float,
+) -> float:
     """
-    Compute the loss of the biased collaborative filtering model with embeddings.
+    Calculate the complete latent-factor training objective.
 
-    Args:
-        users_train (arr): Array containing the training data for users.
-        users_indices_train (arr): Array containing the indices of the users in the training data.
-        user_biases (arr): Array containing the current user biases.
-        user_embeddings (arr): Array containing user embeddings.
-        movie_biases (arr): Array containing the current movie biases.
-        movie_embeddings (arr): Array containing movie embeddings.
-        LAMBDA (float): Regularization parameter for the bias update.
-        GAMMA (float): Regularization parameter for the bias update.
+    Parameters
+    ----------
+    users_train : numpy.ndarray
+        User-grouped training observations.
+    users_indices_train : numpy.ndarray
+        User IDs corresponding to ``users_train``.
+    user_biases : numpy.ndarray
+        User biases.
+    user_embeddings : numpy.ndarray
+        User latent factors.
+    movie_biases : numpy.ndarray
+        Movie biases.
+    movie_embeddings : numpy.ndarray
+        Movie latent factors.
+    lambda_reg : float
+        Positive squared-error weight.
+    gamma : float
+        Nonnegative L2 bias regularization coefficient.
+    tau : float
+        Positive L2 latent-factor regularization coefficient.
 
-    Returns:
-        float: Loss value of the biased collaborative filtering model with embeddings.
+    Returns
+    -------
+    float
+        Regularized loss on the supplied training ratings.
     """
-    loss = 0.0
-    for idx, user_idx in enumerate(users_indices_train):
-        movie_indices = users_train[idx][0]
-        ratings = users_train[idx][1]
-        sq_error = getSqErrorEmbeddings(user_idx, user_biases, user_embeddings, movie_biases, movie_embeddings, movie_indices, ratings)
-        sum_sq_errors = getSumSqError(sq_error)
-        loss += sum_sq_errors
-    bias_terms = 0.5 * GAMMA * (np.sum(np.square(user_biases)) + np.sum(np.square(movie_biases)))
-    embedding_terms = 0.5 * TAU * (np.sum(np.square(user_embeddings)) + np.sum(np.square(movie_embeddings)))
-    return 0.5 * LAMBDA * loss + bias_terms + embedding_terms
+    squared_error_sum = 0.0
+    for row, user_idx in enumerate(users_indices_train):
+        movie_indices, ratings = users_train[row]
+        squared_errors = get_sq_error_embeddings(
+            user_idx,
+            user_biases,
+            user_embeddings,
+            movie_biases,
+            movie_embeddings,
+            movie_indices,
+            ratings,
+        )
+        squared_error_sum += get_sum_sq_error(squared_errors)
 
-def compute_rmse_with_embeddings(users, users_indices, user_biases, user_embeddings, 
-                                 movie_biases, movie_embeddings):
+    bias_penalty = (
+        np.sum(np.square(user_biases)) + np.sum(np.square(movie_biases))
+    )
+    factor_penalty = (
+        np.sum(np.square(user_embeddings))
+        + np.sum(np.square(movie_embeddings))
+    )
+    return float(
+        0.5 * lambda_reg * squared_error_sum
+        + 0.5 * gamma * bias_penalty
+        + 0.5 * tau * factor_penalty
+    )
+
+def compute_rmse_with_embeddings(
+    users: np.ndarray,
+    users_indices: np.ndarray,
+    user_biases: np.ndarray,
+    user_embeddings: np.ndarray,
+    movie_biases: np.ndarray,
+    movie_embeddings: np.ndarray,
+) -> float:
     """
-    Compute the root mean squared error of the biased collaborative filtering model with embeddings.
+    Compute the factor-model RMSE over supplied observed ratings.
 
-    Args:
-        users (arr): Array containing the ratings data for users.
-        users_indices (arr): Array containing the indices of the users.
-        user_biases (arr): Array containing the current user biases.
-        user_embeddings (arr): Array containing user embeddings.
-        movie_biases (arr): Array containing the current movie biases.
-        movie_embeddings (arr): Array containing movie embeddings.
+    Parameters
+    ----------
+    users : numpy.ndarray
+        User-grouped observations, training or test.
+    users_indices : numpy.ndarray
+        User IDs corresponding to ``users``.
+    user_biases : numpy.ndarray
+        Current user biases.
+    user_embeddings : numpy.ndarray
+        Current user factors.
+    movie_biases : numpy.ndarray
+        Current movie biases.
+    movie_embeddings : numpy.ndarray
+        Current movie factors.
 
-    Returns:
-        float: Root mean squared error value of the biased collaborative filtering model with embeddings.
+    Returns
+    -------
+    float
+        Root mean squared prediction error over individual ratings.
+
+    Raises
+    ------
+    ValueError
+        If there are no observed ratings to evaluate.
     """
-    rmse = []
-    for idx, user_idx in enumerate(users_indices):
-        movie_indices = users[idx][0]
-        ratings = users[idx][1]
-        sq_error = getSqErrorEmbeddings(user_idx, user_biases, user_embeddings, movie_biases,\
-            movie_embeddings, movie_indices, ratings)
-        rmse.extend(sq_error)
-    return np.sqrt(np.mean(rmse))
+    total_squared_error = 0.0
+    n_ratings = 0
+
+    for row, user_idx in enumerate(users_indices):
+        movie_indices, ratings = users[row]
+        squared_errors = get_sq_error_embeddings(
+            user_idx,
+            user_biases,
+            user_embeddings,
+            movie_biases,
+            movie_embeddings,
+            movie_indices,
+            ratings,
+        )
+        total_squared_error += get_sum_sq_error(squared_errors)
+        n_ratings += len(ratings)
+
+    if n_ratings == 0:
+        raise ValueError(
+            "RMSE cannot be computed for an empty ratings set."
+        )
+
+    return float(np.sqrt(total_squared_error / n_ratings))
