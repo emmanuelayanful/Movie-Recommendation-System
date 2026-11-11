@@ -1,0 +1,16 @@
+{
+  "model": "Matrix Factorization",
+  "dataset": "ml-latest-small",
+  "n_epochs": 20,
+  "n_factors": 16,
+  "seed": 42,
+  "hyperparameters": {
+    "lambda_reg": 0.0016509391482753093,
+    "gamma": 0.000950108440461662,
+    "tau": 0.9851072701639326
+  },
+  "final_loss": 45.740639997547675,
+  "train_rmse": 0.7845237768036053,
+  "test_rmse": 0.871706424797807,
+  "training_time_seconds": 16.129
+}

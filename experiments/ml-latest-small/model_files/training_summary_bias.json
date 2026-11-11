@@ -1,0 +1,15 @@
+{
+  "model": "Bias-Only",
+  "dataset": "ml-latest-small",
+  "n_epochs": 20,
+  "n_factors": null,
+  "seed": 42,
+  "hyperparameters": {
+    "lambda_reg": 0.0016480446427978971,
+    "gamma": 0.0012561043700013551
+  },
+  "final_loss": 47.081418545297396,
+  "train_rmse": 0.7871428484418073,
+  "test_rmse": 0.8706645199392535,
+  "training_time_seconds": 2.838
+}
