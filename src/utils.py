@@ -94,13 +94,13 @@ def _experiment_paths(experiment_path: str | Path, dataset_name: str) -> tuple[P
         experiment_dir / "images"
     )
 
-def setup_logging(experiment_folder: str, filename: str) -> logging.Logger:
+def setup_logging(experiment_folder: str | Path, filename: str) -> logging.Logger:
     """
     Configure file and console logging for an experiment.
 
     Parameters
     ----------
-    experiment_folder : str
+    experiment_folder : str | Path
         Directory where the log file will be created.
     filename : str
         Log-file name, including any extension.
@@ -133,18 +133,18 @@ def setup_logging(experiment_folder: str, filename: str) -> logging.Logger:
         handler.setLevel(logging.INFO)
         handler.setFormatter(formatter)
         setattr(handler, "_movielens_experiment_handler", True)
-        logger.addHandler(handler)  
+        logger.addHandler(handler)
     return logger
 
 ############################## Serialization #################################
 
-def save_data_to_pickle(save_path: str, data: Any, filename: str, log: bool = True) -> None:
+def save_data_to_pickle(save_path: str | Path, data: Any, filename: str, log: bool = True) -> None:
     """
     Serialize a Python object using pickle protocol 5.
     
     Parameters
     ----------
-    save_path : str
+    save_path : str | Path
         Destination directory; created if necessary.
     data : Any
         Object to serialize.
@@ -160,13 +160,13 @@ def save_data_to_pickle(save_path: str, data: Any, filename: str, log: bool = Tr
     if log:
         print(f'Saved {filename} to .pkl file at {directory}.')
 
-def load_data_from_pickle(save_path: str, filename: str, log: bool = True) -> Any:
+def load_data_from_pickle(save_path: str | Path, filename: str, log: bool = True) -> Any:
     """
     Load a previously serialized Python object from a pickle file.
     
     Parameters
     ----------
-    save_path : str
+    save_path : str | Path
         Directory containing the serialized object.
     filename : str
         Filename without the ``.pkl`` extension.
@@ -186,13 +186,13 @@ def load_data_from_pickle(save_path: str, filename: str, log: bool = True) -> An
         print(f"Loaded {filename} from .pkl file at {save_path}")
     return data
 
-def save_numpy_array(save_path: str, data: np.ndarray, filename: str, log: bool = True):
+def save_numpy_array(save_path: str | Path, data: np.ndarray, filename: str, log: bool = True):
     """
     Save an array to a Numpy ``.npy`` file.
     
     Parameters
     ----------
-    save_path : str
+    save_path : str | Path
         Destination directory; created if necessary.
     data : np.ndarray
         Array to save. Object arrays are supported for the project's 
@@ -209,13 +209,13 @@ def save_numpy_array(save_path: str, data: np.ndarray, filename: str, log: bool 
     if log:
         print(f'Saved {filename} to .npy file at {directory}')
 
-def load_numpy_array(save_path: str, filename: str, log: bool = True) -> np.ndarray:
+def load_numpy_array(save_path: str | Path, filename: str, log: bool = True) -> np.ndarray:
     """
     Load a NumPy array from file.
     
     Parameters
     ----------
-    save_path : str
+    save_path : str | Path
         Directory containing the save array.
     filename : str
         Output name without the ``.npy`` extension.
@@ -275,7 +275,7 @@ def _download_movielens_dataset(raw_folder: Path, dataset_name: str) -> None:
             "in the expected directory structure."
         )
 
-def load_ratings_data(base_path: str, dataset_name: str) -> None:
+def load_ratings_data(base_path: str | Path, dataset_name: str) -> None:
     """
     Prepare MovieLens ratings and create internal identifier mappings.
 
@@ -288,7 +288,7 @@ def load_ratings_data(base_path: str, dataset_name: str) -> None:
 
     Parameters
     ----------
-    base_path : str
+    base_path : str | Path
         Root directory for downloaded and preprocessed datsets.
     dataset_name : str
         Movielens archive name, e.g. ``ml-latest-small`` or ``ml-32m``.
@@ -332,13 +332,13 @@ def load_ratings_data(base_path: str, dataset_name: str) -> None:
     # Delete files to avoid overloading memory
     del ratings,  map_id_to_movie, map_id_to_user, map_user_to_id, map_movie_to_id
 
-def load_movie_data(base_path: str, dataset_name: str) -> None:
+def load_movie_data(base_path: str | Path, dataset_name: str) -> None:
     """
     Save MovieLens movie metadata and ID-to-title mapping.
 
     Parameters
     ----------
-    base_path : str
+    base_path : str | Path
         Root data directory.
     dataset_name : str
         Name of the MovieLens dataset.
