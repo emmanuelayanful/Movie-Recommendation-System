@@ -167,7 +167,7 @@ The default **interaction-level** split independently assigns ratings to trainin
 For both models, prediction quality is reported using root mean squared error over observed ratings:
 
 $$
-\operatorname{RMSE}=\sqrt{\frac{1}{|\Omega|}\sum_{(u,i)\in\Omega}(r_{ui}-\hat r_{ui})^2}.
+\mathop{\mathrm{RMSE}}=\sqrt{\frac{1}{|\Omega|}\sum_{(u,i)\in\Omega}(r_{ui}-\hat r_{ui})^2}.
 $$
 
 ### Bias-Only baseline
