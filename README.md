@@ -234,4 +234,23 @@ Movie factors are learned from **rating interactions**, not from plot descriptio
 - **PCA** provides a linear two-dimensional projection; the displayed axes do not capture all variation in the factors.
 - **t-SNE** emphasizes local neighborhoods and depends on sampling and configuration. Distances in a t-SNE plot should not be interpreted as exact distances in the original embedding space.
 
-These distinctions are important when interpreting clusters or individual movie pairs in the examination presentation.
+## Interactive web demonstration
+
+A separate [Streamlit deployment repository](https://github.com/emmanuelayanful/Movie-Recommendation-Project) provides a lightweight interface for selecting movies, submitting ratings, and viewing recommendations. Its purpose is **inference only**: the deployed application uses saved model files and does not expose or execute the ALS training pipeline.
+
+[Open the hosted movie recommendation app](https://emmanuelayanful-movie-recommendation-project-app-kv1nci.streamlit.app/)
+
+The web demonstration is optional for reproducing the experiments in this repository; all model training and analysis can be performed locally.
+
+## Reproducibility and limitations
+
+- **Deterministic configuration:** Splitting and factor initialization use an explicit seed (default `42`). Record the dataset, split configuration, model, factor dimension, epochs, and hyperparameters when comparing runs.
+- **Artifact consistency:** Never mix movie-ID mappings and factor/bias arrays from different preprocessing runs; their internal index order must agree.
+- **Hyperparameter selection:** Use validation observations for search. Reserve the test set for final reporting rather than choosing parameters or epochs based on its RMSE curve.
+- **Cold-start limitations:** An interaction-level split can contain users or movies absent from training. New-user inference is supported using supplied ratings, but unseen movies do not have learned collaborative factors.
+- **Similarity interpretation:** Learned proximity reflects collaborative rating patterns; 2D projections are exploratory visualizations, not ground-truth genre classification.
+- **Saved files:** Only load pickle files (`.pkl`) from trusted sources. Large raw data, grouped arrays, and model artifacts may consume substantial storage, especially for `ml-32m`.
+
+## Data and acknowledgments
+
+Ratings and movie metadata come from the [GroupLens MovieLens project](https://grouplens.org/datasets/movielens/). This repository documents the implementation and analysis of ALS-based collaborative filtering; dataset ownership and licensing remain with the original provider. When using MovieLens results in academic work, follow the dataset's attribution guidance.
