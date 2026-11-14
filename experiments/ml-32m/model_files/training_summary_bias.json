@@ -11,5 +11,5 @@
   "final_loss": 224384.7134204256,
   "train_rmse": 0.8459021623325793,
   "test_rmse": 0.855372418662658,
-  "training_time_seconds": 105.498
+  "training_time_seconds": 101.444
 }

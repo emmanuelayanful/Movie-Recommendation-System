@@ -393,15 +393,16 @@ def _group_ratings(
 
 def split_into_train_test(
     base_path: str, experiment_path: str, dataset_name: str,
-    seed: int = 42, test_size: float = .2
+    seed: int = 42, test_size: float = .2,
+    split_method: str = "interaction",
 ) -> None:
     """
     Split rating interactions into training and test artifacts.
 
-    Each rating is assigned independently using a NumPy random generator.
-    This is **not** a per-user stratified split: a user or movie can have no
-    training ratings, particularly in sparse datasets. The expected test
-    fraction is ``test_size``; the realized fraction may differ slightly.
+    ``interaction`` assigns ratings independently (the original approach).
+    ``per-user`` randomly holds out roughly ``test_size`` of each user's
+    ratings, guaranteeing at least one train and one test rating for every
+    user with two or more ratings. Movie coverage is not guaranteed.
 
     Parameters
     ----------
@@ -416,7 +417,11 @@ def split_into_train_test(
     test_size : float, default=0.2
         Probability that a rating is assigned to the test set. Must be
         strictly between 0 and 1.
+    split_method : {"interaction", "per-user"}, default="interaction"
+        Strategy used to create the train/test split.
     """
+    if split_method not in ("interaction", "per-user"):
+        raise ValueError("split_method must be 'interaction' or 'per-user'.")
     if not 0.0 < test_size < 1.0:
         raise ValueError("test_size must be strictly between 0 and 1.")
 
@@ -433,13 +438,38 @@ def split_into_train_test(
         pl.col("movieId").replace_strict(movie_id_map).alias("movieIdx")
     )
 
-    # One independent draw per interaction, independent of its user/movie ID.
     rng = np.random.default_rng(seed)
     ratings = ratings.with_columns(
-        pl.Series("split", rng.uniform(size=ratings.height))
+        pl.Series("_random", rng.random(ratings.height))
     )
-    train_df = ratings.filter(pl.col("split") > test_size).drop("split")
-    test_df = ratings.filter(pl.col("split") <= test_size).drop("split")
+
+    if split_method == "interaction":
+        # Preserve original independent, per-interaction Bernoulli split.
+        train_df = ratings.filter(pl.col("_random") > test_size).drop("_random")
+        test_df = ratings.filter(pl.col("_random") <= test_size).drop("_random")
+    else:
+        # Rank random draws separately within each user's ratings.
+        # Assign a bounded number to test so every user appears in both sets.
+        ratings = ratings.with_columns(
+            pl.len().over("userIdx").alias("_n_user"),
+            pl.col("_random").rank(method="ordinal").over("userIdx").alias("_rank"),
+        )
+        if ratings.select(pl.col("_n_user").min()).item() < 2:
+            raise ValueError(
+                "Per-user splitting requires at least two ratings per user."
+            )
+        ratings = ratings.with_columns(
+            (pl.col("_n_user") * test_size)
+            .round(0)
+            .cast(pl.Int64)
+            .clip(1, pl.col("_n_user") - 1)
+            .alias("_n_test")
+        )
+        # _rank is 1-based; exactly _n_test rows per user enter the test split.
+        is_test = pl.col("_rank") <= pl.col("_n_test")
+        extra = ("_random", "_n_user", "_rank", "_n_test")
+        test_df = ratings.filter(is_test).drop(extra)
+        train_df = ratings.filter(~is_test).drop(extra)
 
     users_indices_train, users_train = _group_ratings(train_df, "userIdx", "movieIdx")
     movies_indices_train, movies_train = _group_ratings(train_df, "movieIdx", "userIdx")

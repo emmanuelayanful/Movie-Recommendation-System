@@ -108,6 +108,7 @@ class RecommendationModel:
         dataset_dir: str | Path = PROJECT_ROOT / "data",
         experiment_dir: str | Path = PROJECT_ROOT / "experiments",
         test_size: float = 0.2,
+        split_method: str = "interaction",
     ) -> None:
         if n_factors < 1 or n_epochs < 1:
             raise ValueError("n_factors and n_epochs must be positive integers.")
@@ -128,6 +129,9 @@ class RecommendationModel:
         self.dataset_dir = Path(dataset_dir).expanduser().resolve()
         self.experiment_dir = Path(experiment_dir).expanduser().resolve()
         self.test_size = test_size
+        if split_method not in ("interaction", "per-user"):
+            raise ValueError("split_method must be 'interaction' or 'per-user'.")
+        self.split_method = split_method
         self.logger = logging.getLogger(__name__)
         self._split: SplitData | None = None
 
@@ -163,7 +167,7 @@ class RecommendationModel:
         return self.experiment_path / "model_files"
 
     def preprocess_data(
-        self, *, force: bool = False, plot_data: bool = True
+        self, *, force: bool = False, plot_data: bool = False
     ) -> None:
         """
         Prepare rating mappings, movie metadata, and a reproducible split.
@@ -217,6 +221,7 @@ class RecommendationModel:
         split_changed = prior_config is not None and (
             prior_config.get("seed") != self.seed
             or prior_config.get("test_size") != self.test_size
+            or prior_config.get("split_method", "interaction") != self.split_method
         )
         rebuild_split = (
             force or rebuild_ratings or split_files_missing
@@ -224,17 +229,19 @@ class RecommendationModel:
         )
         if rebuild_split:
             self.logger.info(
-                "Creating interaction split (seed=%d, test_size=%.3f)...",
-                self.seed, self.test_size,
+                "Creating %s split (seed=%d, test_size=%.3f)...",
+                self.split_method, self.seed, self.test_size,
             )
             utils.split_into_train_test(
                 str(self.dataset_dir), str(self.experiment_dir),
                 self.dataset_name, seed=self.seed, test_size=self.test_size,
+                split_method=self.split_method,
             )
             self.split_path.mkdir(parents=True, exist_ok=True)
             with split_config_path.open("w", encoding="utf-8") as file:
                 json.dump(
-                    {"seed": self.seed, "test_size": self.test_size},
+                    {"seed": self.seed, "test_size": self.test_size,
+                     "split_method": self.split_method},
                     file, indent=2,
                 )
 
@@ -299,7 +306,7 @@ class RecommendationModel:
 
     def train_model(
         self, model: str, *, params: Mapping[str, float] | None = None,
-        plot_training: bool = True,
+        plot_training: bool = False,
     ) -> dict[str, Any]:
         """
         Train an ALS model, log metrics, and save all resulting artifacts.
@@ -554,6 +561,11 @@ def _parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument(
+        "--split-method", choices=("interaction", "per-user"),
+        default="interaction",
+        help="Train/test splitting strategy (default: interaction).",
+    )
+    parser.add_argument(
         "--bias-params", type=Path,
         help="Trusted .pkl file containing bias-only Optuna best_params.",
     )
@@ -564,6 +576,14 @@ def _parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--force-preprocess", action="store_true",
         help="Recreate preprocessing and train/test split artifacts.",
+    )
+    parser.add_argument(
+        "--plot-data", action="store_true",
+        help="Save exploratory rating plots.",
+    )
+    parser.add_argument(
+        "--plot-training", action="store_true",
+        help="Save training loss and RMSE plots.",
     )
     parser.add_argument(
         "--skip-preprocessing", action="store_true",
@@ -590,6 +610,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         dataset_dir=args.data_dir,
         experiment_dir=args.experiment_dir,
         test_size=args.test_size,
+        split_method=args.split_method,
     )
     logger = utils.setup_logging(
         str(experiment.experiment_path), "experiment.log"
@@ -599,10 +620,24 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         if args.skip_preprocessing:
+            config_path = experiment.split_path / "split_config.json"
+            if not config_path.is_file():
+                raise FileNotFoundError(
+                    "Cannot verify saved split settings without split_config.json."
+                )
+            with config_path.open("r", encoding="utf-8") as file:
+                config = json.load(file)
+            if (config.get("split_method", "interaction") != args.split_method
+                or config.get("seed") != args.seed
+                or config.get("test_size") != args.test_size):
+                raise ValueError(
+                    "Saved split configuration differs from CLI arguments. "
+                    "Remove --skip-preprocessing to regenerate the split."
+                )
             logger.info("Using existing preprocessing artifacts (not rebuilding).")
         else:
             experiment.preprocess_data(
-                force=args.force_preprocess
+                force=args.force_preprocess, plot_data=args.plot_data
             )
 
         if args.model in ("bias-only", "both"):
@@ -611,7 +646,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if args.bias_params else None
             )
             experiment.train_model(
-                "Bias-Only", params=bias_params
+                "Bias-Only", params=bias_params,
+                plot_training=args.plot_training,
             )
 
         if args.model in ("matrix-factorization", "both"):
@@ -620,7 +656,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if args.factor_params else None
             )
             experiment.train_model(
-                "Matrix Factorization", params=factor_params
+                "Matrix Factorization", params=factor_params,
+                plot_training=args.plot_training,
             )
         logger.info("Experiment completed successfully.")
     except Exception:
