@@ -218,9 +218,9 @@ Once the user parameters are estimated, previously rated movies are excluded and
 | Model | Ranking score |
 | --- | --- |
 | Bias-Only | $s_{mn}=b_n^{(i)}$ |
-| Bias + Factors | $s_{mn}=\textbf{u}_{m}^\top\textbf{v}_{n}+0.05b_n^{(i)}$ (default heuristic) |
+| Bias + Factors | $`s_{mn}=\textbf{u}_{m}^\top\textbf{v}_{n}+0.05b_n^{(i)}`$ (default heuristic) |
 
-The factor model's **0.05 movie-bias weight is a recommendation-ranking heuristic**, intended to reduce the influence of general movie-rating tendencies. It is **not** used for training or for computing rating-prediction RMSE, which uses the full $\textbf{u}_{m}^\top\textbf{v}_{n}+b_m^{(u)}+b_n^{(i)}$ prediction equation. The analysis notebook compares alternative bias weights instead of assuming one is universally best.
+The factor model's **0.05 movie-bias weight is a recommendation-ranking heuristic**, intended to reduce the influence of general movie-rating tendencies. It is **not** used for training or for computing rating-prediction RMSE, which uses the full $`\textbf{u}_{m}^\top\textbf{v}_{n}+b_m^{(u)}+b_n^{(i)}`$ prediction equation. The analysis notebook compares alternative bias weights instead of assuming one is universally best.
 
 A limitation of the Bias-Only model is that a new user's estimated bias adds the same constant to every candidate score. Therefore, **changing that user's rating values does not change the ranking** (provided the set of already-rated titles stays the same). Matrix Factorization can change recommendations based on the pattern of ratings.
 
