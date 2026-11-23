@@ -4,15 +4,16 @@ channels:
 dependencies:
   - python=3.13
   - pip
-  - tqdm
-  - jupyterlab
-  - numpy
   - scikit-learn
-  - matplotlib
-  - numba
-  - streamlit
-  - requests
-  - seaborn
   - polars
+  - requests
+  - jupyterlab
+  - streamlit
+  - matplotlib
+  - seaborn
+  - ipykernel
   - scipy
+  - tqdm
+  - numba
   - optuna
+  - numpy

@@ -1,52 +1,52 @@
-2026-11-15 16:47:24,999 - INFO - Starting MovieLens ALS experiment for ml-32m
-2026-11-15 16:47:25,001 - INFO - Generating exploratory data plots...
-2026-11-15 16:47:38,407 - INFO - Data preparation completed in 13.41 seconds.
-2026-11-15 16:47:42,584 - INFO - Loaded grouped split for 200948 users and 84432 movies.
-2026-11-15 16:47:42,585 - INFO - Training Bias-Only for 20 epochs...
-2026-11-15 16:47:42,585 - INFO - Hyperparameters: {'lambda_reg': 0.02347101288568332, 'gamma': 0.007631550861559506, 'tau': 0.5092}
-2026-11-15 16:47:48,856 - INFO - Bias-Only 1/20 | loss 233364.65693 | train RMSE 0.86094 | test RMSE 0.87045
-2026-11-15 16:47:53,553 - INFO - Bias-Only 2/20 | loss 225702.94782 | train RMSE 0.84661 | test RMSE 0.85611
-2026-11-15 16:47:58,195 - INFO - Bias-Only 3/20 | loss 225279.16494 | train RMSE 0.84596 | test RMSE 0.85548
-2026-11-15 16:48:02,938 - INFO - Bias-Only 4/20 | loss 225201.19047 | train RMSE 0.84592 | test RMSE 0.85544
-2026-11-15 16:48:07,574 - INFO - Bias-Only 5/20 | loss 225145.22253 | train RMSE 0.84592 | test RMSE 0.85543
-2026-11-15 16:48:12,298 - INFO - Bias-Only 6/20 | loss 225091.67798 | train RMSE 0.84591 | test RMSE 0.85543
-2026-11-15 16:48:16,998 - INFO - Bias-Only 7/20 | loss 225038.81404 | train RMSE 0.84591 | test RMSE 0.85542
-2026-11-15 16:48:21,436 - INFO - Bias-Only 8/20 | loss 224986.37630 | train RMSE 0.84591 | test RMSE 0.85542
-2026-11-15 16:48:25,904 - INFO - Bias-Only 9/20 | loss 224934.31264 | train RMSE 0.84591 | test RMSE 0.85541
-2026-11-15 16:48:30,378 - INFO - Bias-Only 10/20 | loss 224882.60963 | train RMSE 0.84591 | test RMSE 0.85541
-2026-11-15 16:48:35,017 - INFO - Bias-Only 11/20 | loss 224831.26230 | train RMSE 0.84591 | test RMSE 0.85540
-2026-11-15 16:48:39,501 - INFO - Bias-Only 12/20 | loss 224780.26763 | train RMSE 0.84591 | test RMSE 0.85540
-2026-11-15 16:48:43,971 - INFO - Bias-Only 13/20 | loss 224729.62308 | train RMSE 0.84591 | test RMSE 0.85540
-2026-11-15 16:48:48,492 - INFO - Bias-Only 14/20 | loss 224679.32620 | train RMSE 0.84591 | test RMSE 0.85539
-2026-11-15 16:48:53,225 - INFO - Bias-Only 15/20 | loss 224629.37460 | train RMSE 0.84591 | test RMSE 0.85539
-2026-11-15 16:48:57,692 - INFO - Bias-Only 16/20 | loss 224579.76592 | train RMSE 0.84590 | test RMSE 0.85539
-2026-11-15 16:49:02,134 - INFO - Bias-Only 17/20 | loss 224530.49778 | train RMSE 0.84590 | test RMSE 0.85538
-2026-11-15 16:49:06,695 - INFO - Bias-Only 18/20 | loss 224481.56787 | train RMSE 0.84590 | test RMSE 0.85538
-2026-11-15 16:49:11,089 - INFO - Bias-Only 19/20 | loss 224432.97385 | train RMSE 0.84590 | test RMSE 0.85538
-2026-11-15 16:49:15,476 - INFO - Bias-Only 20/20 | loss 224384.71342 | train RMSE 0.84590 | test RMSE 0.85537
-2026-11-15 16:49:16,746 - INFO - Bias-Only: train RMSE=0.84590, test RMSE=0.85537, loss=224384.71342, training time=92.89s
-2026-11-15 16:49:16,748 - INFO - Training Matrix Factorization for 20 epochs...
-2026-11-15 16:49:16,748 - INFO - Hyperparameters: {'lambda_reg': 0.03415661285778302, 'gamma': 0.00114082774054455, 'tau': 0.6780456116674969}
-2026-11-15 16:49:45,510 - INFO - Matrix Factorization 1/20 | loss 309003.06395 | train RMSE 0.82344 | test RMSE 0.87727
-2026-11-15 16:50:04,183 - INFO - Matrix Factorization 2/20 | loss 264429.39848 | train RMSE 0.74731 | test RMSE 0.82237
-2026-11-15 16:50:22,971 - INFO - Matrix Factorization 3/20 | loss 250010.44660 | train RMSE 0.72022 | test RMSE 0.79832
-2026-11-15 16:50:42,318 - INFO - Matrix Factorization 4/20 | loss 244280.15933 | train RMSE 0.70897 | test RMSE 0.78784
-2026-11-15 16:50:59,928 - INFO - Matrix Factorization 5/20 | loss 241577.70180 | train RMSE 0.70356 | test RMSE 0.78280
-2026-11-15 16:51:18,044 - INFO - Matrix Factorization 6/20 | loss 240106.97604 | train RMSE 0.70058 | test RMSE 0.78006
-2026-11-15 16:51:35,576 - INFO - Matrix Factorization 7/20 | loss 239199.62748 | train RMSE 0.69873 | test RMSE 0.77838
-2026-11-15 16:51:53,089 - INFO - Matrix Factorization 8/20 | loss 238583.35146 | train RMSE 0.69745 | test RMSE 0.77724
-2026-11-15 16:52:10,737 - INFO - Matrix Factorization 9/20 | loss 238136.51875 | train RMSE 0.69652 | test RMSE 0.77639
-2026-11-15 16:52:28,869 - INFO - Matrix Factorization 10/20 | loss 237799.07861 | train RMSE 0.69581 | test RMSE 0.77574
-2026-11-15 16:52:48,359 - INFO - Matrix Factorization 11/20 | loss 237537.83480 | train RMSE 0.69525 | test RMSE 0.77522
-2026-11-15 16:53:07,355 - INFO - Matrix Factorization 12/20 | loss 237332.23595 | train RMSE 0.69481 | test RMSE 0.77480
-2026-11-15 16:53:26,219 - INFO - Matrix Factorization 13/20 | loss 237168.37081 | train RMSE 0.69446 | test RMSE 0.77446
-2026-11-15 16:53:45,796 - INFO - Matrix Factorization 14/20 | loss 237036.30979 | train RMSE 0.69417 | test RMSE 0.77417
-2026-11-15 16:54:04,510 - INFO - Matrix Factorization 15/20 | loss 236928.78658 | train RMSE 0.69394 | test RMSE 0.77392
-2026-11-15 16:54:22,578 - INFO - Matrix Factorization 16/20 | loss 236840.41366 | train RMSE 0.69375 | test RMSE 0.77372
-2026-11-15 16:54:41,671 - INFO - Matrix Factorization 17/20 | loss 236767.14821 | train RMSE 0.69358 | test RMSE 0.77354
-2026-11-15 16:54:59,546 - INFO - Matrix Factorization 18/20 | loss 236705.91697 | train RMSE 0.69345 | test RMSE 0.77339
-2026-11-15 16:55:19,201 - INFO - Matrix Factorization 19/20 | loss 236654.35522 | train RMSE 0.69334 | test RMSE 0.77326
-2026-11-15 16:55:38,878 - INFO - Matrix Factorization 20/20 | loss 236610.62514 | train RMSE 0.69324 | test RMSE 0.77315
-2026-11-15 16:55:40,528 - INFO - Matrix Factorization: train RMSE=0.69324, test RMSE=0.77315, loss=236610.62514, training time=381.90s
-2026-11-15 16:55:40,534 - INFO - Experiment completed successfully.
-2026-11-15 16:55:40,534 - INFO - Total execution time: 495.30 seconds
+2026-11-23 09:48:33,515 - INFO - Starting MovieLens ALS experiment for ml-32m
+2026-11-23 09:48:33,518 - INFO - Generating exploratory data plots...
+2026-11-23 09:48:47,511 - INFO - Data preparation completed in 13.99 seconds.
+2026-11-23 09:48:52,025 - INFO - Loaded grouped split for 200948 users and 84432 movies.
+2026-11-23 09:48:52,026 - INFO - Training Bias-Only for 20 epochs...
+2026-11-23 09:48:52,026 - INFO - Hyperparameters: {'lambda_reg': 0.02347101288568332, 'gamma': 0.007631550861559506, 'tau': 0.5092}
+2026-11-23 09:49:00,622 - INFO - Bias-Only 1/20 | loss 233364.65693 | train RMSE 0.86094 | test RMSE 0.87045
+2026-11-23 09:49:07,112 - INFO - Bias-Only 2/20 | loss 225702.94782 | train RMSE 0.84661 | test RMSE 0.85611
+2026-11-23 09:49:12,939 - INFO - Bias-Only 3/20 | loss 225279.16494 | train RMSE 0.84596 | test RMSE 0.85548
+2026-11-23 09:49:18,799 - INFO - Bias-Only 4/20 | loss 225201.19047 | train RMSE 0.84592 | test RMSE 0.85544
+2026-11-23 09:49:24,254 - INFO - Bias-Only 5/20 | loss 225145.22253 | train RMSE 0.84592 | test RMSE 0.85543
+2026-11-23 09:49:30,324 - INFO - Bias-Only 6/20 | loss 225091.67798 | train RMSE 0.84591 | test RMSE 0.85543
+2026-11-23 09:49:35,888 - INFO - Bias-Only 7/20 | loss 225038.81404 | train RMSE 0.84591 | test RMSE 0.85542
+2026-11-23 09:49:41,827 - INFO - Bias-Only 8/20 | loss 224986.37630 | train RMSE 0.84591 | test RMSE 0.85542
+2026-11-23 09:49:47,968 - INFO - Bias-Only 9/20 | loss 224934.31264 | train RMSE 0.84591 | test RMSE 0.85541
+2026-11-23 09:49:53,429 - INFO - Bias-Only 10/20 | loss 224882.60963 | train RMSE 0.84591 | test RMSE 0.85541
+2026-11-23 09:49:59,046 - INFO - Bias-Only 11/20 | loss 224831.26230 | train RMSE 0.84591 | test RMSE 0.85540
+2026-11-23 09:50:04,472 - INFO - Bias-Only 12/20 | loss 224780.26763 | train RMSE 0.84591 | test RMSE 0.85540
+2026-11-23 09:50:09,708 - INFO - Bias-Only 13/20 | loss 224729.62308 | train RMSE 0.84591 | test RMSE 0.85540
+2026-11-23 09:50:14,590 - INFO - Bias-Only 14/20 | loss 224679.32620 | train RMSE 0.84591 | test RMSE 0.85539
+2026-11-23 09:50:19,927 - INFO - Bias-Only 15/20 | loss 224629.37460 | train RMSE 0.84591 | test RMSE 0.85539
+2026-11-23 09:50:25,218 - INFO - Bias-Only 16/20 | loss 224579.76592 | train RMSE 0.84590 | test RMSE 0.85539
+2026-11-23 09:50:30,611 - INFO - Bias-Only 17/20 | loss 224530.49778 | train RMSE 0.84590 | test RMSE 0.85538
+2026-11-23 09:50:35,978 - INFO - Bias-Only 18/20 | loss 224481.56787 | train RMSE 0.84590 | test RMSE 0.85538
+2026-11-23 09:50:41,483 - INFO - Bias-Only 19/20 | loss 224432.97385 | train RMSE 0.84590 | test RMSE 0.85538
+2026-11-23 09:50:46,455 - INFO - Bias-Only 20/20 | loss 224384.71342 | train RMSE 0.84590 | test RMSE 0.85537
+2026-11-23 09:50:47,673 - INFO - Bias-Only: train RMSE=0.84590, test RMSE=0.85537, loss=224384.71342, training time=114.43s
+2026-11-23 09:50:47,674 - INFO - Training Matrix Factorization for 20 epochs...
+2026-11-23 09:50:47,674 - INFO - Hyperparameters: {'lambda_reg': 0.03415661285778302, 'gamma': 0.00114082774054455, 'tau': 0.6780456116674969}
+2026-11-23 09:51:14,944 - INFO - Matrix Factorization 1/20 | loss 309003.06395 | train RMSE 0.82344 | test RMSE 0.87727
+2026-11-23 09:51:36,647 - INFO - Matrix Factorization 2/20 | loss 264429.39848 | train RMSE 0.74731 | test RMSE 0.82237
+2026-11-23 09:52:02,357 - INFO - Matrix Factorization 3/20 | loss 250010.44660 | train RMSE 0.72022 | test RMSE 0.79832
+2026-11-23 09:52:22,786 - INFO - Matrix Factorization 4/20 | loss 244280.15933 | train RMSE 0.70897 | test RMSE 0.78784
+2026-11-23 09:52:46,108 - INFO - Matrix Factorization 5/20 | loss 241577.70180 | train RMSE 0.70356 | test RMSE 0.78280
+2026-11-23 09:53:09,183 - INFO - Matrix Factorization 6/20 | loss 240106.97604 | train RMSE 0.70058 | test RMSE 0.78006
+2026-11-23 09:53:35,286 - INFO - Matrix Factorization 7/20 | loss 239199.62748 | train RMSE 0.69873 | test RMSE 0.77838
+2026-11-23 09:53:59,644 - INFO - Matrix Factorization 8/20 | loss 238583.35146 | train RMSE 0.69745 | test RMSE 0.77724
+2026-11-23 09:54:26,943 - INFO - Matrix Factorization 9/20 | loss 238136.51875 | train RMSE 0.69652 | test RMSE 0.77639
+2026-11-23 09:54:51,048 - INFO - Matrix Factorization 10/20 | loss 237799.07861 | train RMSE 0.69581 | test RMSE 0.77574
+2026-11-23 09:55:17,874 - INFO - Matrix Factorization 11/20 | loss 237537.83480 | train RMSE 0.69525 | test RMSE 0.77522
+2026-11-23 09:55:45,567 - INFO - Matrix Factorization 12/20 | loss 237332.23595 | train RMSE 0.69481 | test RMSE 0.77480
+2026-11-23 09:56:07,637 - INFO - Matrix Factorization 13/20 | loss 237168.37081 | train RMSE 0.69446 | test RMSE 0.77446
+2026-11-23 09:56:30,648 - INFO - Matrix Factorization 14/20 | loss 237036.30979 | train RMSE 0.69417 | test RMSE 0.77417
+2026-11-23 09:56:55,082 - INFO - Matrix Factorization 15/20 | loss 236928.78658 | train RMSE 0.69394 | test RMSE 0.77392
+2026-11-23 09:57:17,130 - INFO - Matrix Factorization 16/20 | loss 236840.41366 | train RMSE 0.69375 | test RMSE 0.77372
+2026-11-23 09:57:36,295 - INFO - Matrix Factorization 17/20 | loss 236767.14821 | train RMSE 0.69358 | test RMSE 0.77354
+2026-11-23 09:57:54,822 - INFO - Matrix Factorization 18/20 | loss 236705.91697 | train RMSE 0.69345 | test RMSE 0.77339
+2026-11-23 09:58:13,368 - INFO - Matrix Factorization 19/20 | loss 236654.35522 | train RMSE 0.69334 | test RMSE 0.77326
+2026-11-23 09:58:32,128 - INFO - Matrix Factorization 20/20 | loss 236610.62514 | train RMSE 0.69324 | test RMSE 0.77315
+2026-11-23 09:58:33,432 - INFO - Matrix Factorization: train RMSE=0.69324, test RMSE=0.77315, loss=236610.62514, training time=464.46s
+2026-11-23 09:58:33,432 - INFO - Experiment completed successfully.
+2026-11-23 09:58:33,432 - INFO - Total execution time: 599.92 seconds
