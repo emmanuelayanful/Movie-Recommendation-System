@@ -83,7 +83,7 @@ For the larger MovieLens dataset, change the dataset argument to `ml-32m`:
 python -m src.main --model both --dataset ml-32m
 ```
 
-The default configuration uses **16 latent factors**, **20 epochs**, a **random seed of 42**, and an **approximately 80/20 interaction-level train/test split**. These can be changed with `--n-factors`, `--n-epochs`, `--seed`, and `--test-size`.
+The default configuration uses **16 latent factors**, **20 epochs**, a **random seed of 42**, and an **approximately 80/20 interaction-level/user-stratified train/test split**. These can be changed with `--n-factors`, `--n-epochs`, `--seed`, `--test-size` and `--split-method`.
 
 On a normal run, `main.py`:
 
@@ -94,7 +94,7 @@ On a normal run, `main.py`:
 5. Records training loss and train/test RMSE at each epoch.
 6. Saves model arrays, histories, configuration summaries, logs, and loss/RMSE plots.
 
-**Figures are saved automatically** as PDF and PNG files; they are not opened as blocking plot windows. Existing complete preprocessing artifacts are reused unless they need to be regenerated. Use `--force-preprocess` to rebuild the derived data and split. Running with `--skip-preprocessing` uses the existing artifacts as-is and skips the preprocessing-stage exploratory plots.
+Figures are saved automatically as PDF and PNG files; they are not opened as blocking plot windows. Existing complete preprocessing artifacts are reused unless they need to be regenerated. Use `--force-preprocess` to rebuild the derived data and split. Running with `--skip-preprocessing` uses the existing artifacts as-is and skips the preprocessing-stage exploratory plots.
 
 ### 2. Inspect the saved results
 
@@ -154,7 +154,7 @@ python -m src.main \
   --factor-params experiments/ml-latest-small/model_files/params_bias_factors.pkl
 ```
 
-After tuning, perform the final training run and report its held-out test metrics. The test RMSE curves saved during training are diagnostic; they should **not** be used to select hyperparameters.
+After tuning, perform the final training run and report its held-out test metrics.
 
 ## Methodology
 
@@ -167,24 +167,24 @@ The default **interaction-level** split independently assigns ratings to trainin
 For both models, prediction quality is reported using root mean squared error over observed ratings:
 
 $$
-\mathop{\mathrm{RMSE}}=\sqrt{\frac{1}{|\Omega|}\sum_{(u,i)\in\Omega}(r_{ui}-\hat r_{ui})^2}.
+\mathop{\mathrm{RMSE}}=\sqrt{\frac{1}{|\Omega|}\sum_{m=1}^M\sum_{n\in\Omega(m)}(r_{mn}-\hat r_{mn})^2}.
 $$
 
 ### Bias-Only baseline
 
-The baseline predicts a user's rating of movie $i$ as
+The baseline predicts a user's rating of movie $n$ as
 
 $$
-\hat r_{ui}=b_u+b_i,
+\hat r_{mn}=b_m^{(u)}+b_n^{(i)},
 $$
 
-where $b_u$ and $b_i$ are learned user and movie biases. **There is no separately fitted global-mean intercept** in the current implementation. With $\Omega_{\mathrm{train}}$ denoting observed training ratings, the model minimizes
+where $b_m^{(u)}$ and $b_n^{(i)}$ are learned user and movie biases. With $\Omega$ denoting observed training ratings, the model minimizes
 
 $$
-\mathcal L_{\mathrm{bias}}=
-\frac{\lambda}{2}\sum_{(u,i)\in\Omega_{\mathrm{train}}}
-(r_{ui}-b_u-b_i)^2
-+\frac{\gamma}{2}\left(\sum_u b_u^2+\sum_i b_i^2\right).
+\begin{aligned}
+\mathcal{L} &= -\dfrac{\lambda}{2}\sum_{m=1}^{M}\sum_{n\in \Omega(m)}\left(r_{mn}-(b_m^{(u)}+b_n^{(i)})\right)^2 \\
+&\quad -\left(\dfrac{\gamma}{2}\sum_{m=1}^{M}\left(b_{m}^{(u)}\right)^2 +\dfrac{\gamma}{2}\sum_{n=1}^{N}\left(b_{n}^{(i)}\right)^2\right)
+\end{aligned}
 $$
 
 ALS alternately updates user and movie biases while holding the other group fixed. Here, `lambda_reg` controls the squared-error term, and `gamma` controls bias regularization.
@@ -194,18 +194,16 @@ ALS alternately updates user and movie biases while holding the other group fixe
 The factor model extends the baseline with $K$-dimensional user vectors $p_u$ and movie vectors $q_i$:
 
 $$
-\hat r_{ui}=b_u+b_i+p_u^\top q_i.
+\hat r_{ui}=b_m^{(u)}+b_n^{(i)}+\mathbf{u}_m^\top \mathbf{v}_n.
 $$
 
 Its regularized objective is
 
 $$
 \begin{aligned}
-\mathcal L_{\mathrm{MF}}={}&
-\frac{\lambda}{2}\sum_{(u,i)\in\Omega_{\mathrm{train}}}
-(r_{ui}-b_u-b_i-p_u^\top q_i)^2\\
-&+\frac{\gamma}{2}\left(\sum_u b_u^2+\sum_i b_i^2\right)\\
-&+\frac{\tau}{2}\left(\sum_u\|p_u\|_2^2+\sum_i\|q_i\|_2^2\right).
+\mathcal{L} &= -\dfrac{\lambda}{2}\sum_{m=1}^{M}\sum_{n\in \Omega(m)}\left(r_{mn}-(\textbf{u}_{m}^{T}\textbf{v}_{n}+b_m^{(u)}+b_n^{(i)})\right)^2 \\
+&\quad -\left(\dfrac{\tau}{2}\sum_{m=1}^{M}\textbf{u}_{m}^{T}\textbf{u}_{m} +\dfrac{\tau}{2}\sum_{n=1}^{N}\textbf{v}_{n}^{T}\textbf{v}_{n}\right)\\
+&\quad -\left(\dfrac{\gamma}{2}\sum_{m=1}^{M}\left(b_{m}^{(u)}\right)^2 -\dfrac{\gamma}{2}\sum_{n=1}^{N}\left(b_{n}^{(i)}\right)^2\right).
 \end{aligned}
 $$
 
@@ -219,10 +217,10 @@ Once the user parameters are estimated, previously rated movies are excluded and
 
 | Model | Ranking score |
 | --- | --- |
-| Bias-Only | $s_{ui}=b_i$ |
-| Bias + Factors | $s_{ui}=p_u^\top q_i+0.05\,b_i$ (default heuristic) |
+| Bias-Only | $s_{mn}=b_n^{(i)}$ |
+| Bias + Factors | $s_{mn}=\textbf{u}_{m}^{T}\textbf{v}_{n}+0.05b_n^{(i)}$ (default heuristic) |
 
-The factor model's **0.05 movie-bias weight is a recommendation-ranking heuristic**, intended to reduce the influence of general movie-rating tendencies. It is **not** used for training or for computing rating-prediction RMSE, which uses the full $b_u+b_i+p_u^\top q_i$ prediction equation. The analysis notebook compares alternative bias weights instead of assuming one is universally best.
+The factor model's **0.05 movie-bias weight is a recommendation-ranking heuristic**, intended to reduce the influence of general movie-rating tendencies. It is **not** used for training or for computing rating-prediction RMSE, which uses the full $\textbf{u}_{m}^{T}\textbf{v}_{n}+b_m^{(u)}+b_n^{(i)}$ prediction equation. The analysis notebook compares alternative bias weights instead of assuming one is universally best.
 
 A limitation of the Bias-Only model is that a new user's estimated bias adds the same constant to every candidate score. Therefore, **changing that user's rating values does not change the ranking** (provided the set of already-rated titles stays the same). Matrix Factorization can change recommendations based on the pattern of ratings.
 
@@ -247,7 +245,7 @@ The web demonstration is optional for reproducing the experiments in this reposi
 - **Deterministic configuration:** Splitting and factor initialization use an explicit seed (default `42`). Record the dataset, split configuration, model, factor dimension, epochs, and hyperparameters when comparing runs.
 - **Artifact consistency:** Never mix movie-ID mappings and factor/bias arrays from different preprocessing runs; their internal index order must agree.
 - **Hyperparameter selection:** Use validation observations for search. Reserve the test set for final reporting rather than choosing parameters or epochs based on its RMSE curve.
-- **Cold-start limitations:** An interaction-level split can contain users or movies absent from training. New-user inference is supported using supplied ratings, but unseen movies do not have learned collaborative factors.
+- **Cold-start limitations:** An interaction-level split can contain users or movies absent from training. New-user inference is supported using supplied ratings, but unseen movies do not have learned collaborative factors. I fixed this by including another split-method called per-user which splits in a way that all users in train are in test.
 - **Similarity interpretation:** Learned proximity reflects collaborative rating patterns; 2D projections are exploratory visualizations, not ground-truth genre classification.
 - **Saved files:** Only load pickle files (`.pkl`) from trusted sources. Large raw data, grouped arrays, and model artifacts may consume substantial storage, especially for `ml-32m`.
 
